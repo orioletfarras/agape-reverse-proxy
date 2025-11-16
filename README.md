@@ -7,7 +7,8 @@ Nginx reverse proxy configuration for Agape V1 and V2 backends.
 ```
 CloudFlare → Nginx Reverse Proxy (this repo)
                 ├─> /api/v1/* → backend-v1:5002 (login.py - 226 endpoints)
-                └─> /api/v2/* → backend:5001 (hexagonal architecture)
+                ├─> /api/v2/* → backend:5001 (hexagonal architecture - PRODUCTION)
+                └─> /api/v2-staging/* → backend-v2-staging:5003 (testing environment)
 ```
 
 ## Files
@@ -32,12 +33,22 @@ Deployment is automated via GitHub Actions. On push to `master`:
 - Port: 5002
 - Repository: [orioletfarras/agape-v1](https://github.com/orioletfarras/agape-v1)
 
-### V2 API (Hexagonal Architecture)
+### V2 API (Hexagonal Architecture - Production)
 - Base URL: `https://agape.penwin.cloud/api/v2/*`
 - Health check: `https://agape.penwin.cloud/api/v2/health`
 - Container: `delejove-v2-backend`
 - Port: 5001
 - Repository: [orioletfarras/delejove-v2-backend](https://github.com/orioletfarras/delejove-v2-backend)
+- Branch: `main`
+
+### V2 Staging API (Testing Environment)
+- Base URL: `https://agape.penwin.cloud/api/v2-staging/*`
+- Health check: `https://agape.penwin.cloud/api/v2-staging/health`
+- Container: `delejove-v2-backend-staging`
+- Port: 5003
+- Repository: [orioletfarras/delejove-v2-backend](https://github.com/orioletfarras/delejove-v2-backend)
+- Branch: `staging`
+- Purpose: Test new features before deploying to production
 
 ## Manual Deployment
 
