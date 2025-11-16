@@ -101,6 +101,39 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  backend-v1-staging:
+    image: 635737031454.dkr.ecr.eu-south-2.amazonaws.com/agape-v1:staging
+    container_name: agape-backend-v1-staging
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=staging
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "5004:5002"
+    networks:
+      - delejove-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5002/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   nginx:
     image: nginx:1.25-alpine
     container_name: delejove-v2-nginx
@@ -117,6 +150,7 @@ services:
       - backend-v1
       - backend
       - backend-v2-staging
+      - backend-v1-staging
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
