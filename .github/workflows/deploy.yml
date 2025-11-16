@@ -1,0 +1,72 @@
+name: Deploy Nginx Configuration
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+env:
+  EC2_HOST: 51.94.1.69
+  EC2_USER: ubuntu
+  DEPLOY_PATH: /home/ubuntu/delejove-v2-backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
+
+      - name: Copy docker-compose.yml to server
+        run: |
+          scp -i ~/.ssh/id_rsa docker-compose.yml $EC2_USER@$EC2_HOST:$DEPLOY_PATH/
+
+      - name: Copy nginx configuration to server
+        run: |
+          scp -i ~/.ssh/id_rsa nginx/nginx.conf $EC2_USER@$EC2_HOST:$DEPLOY_PATH/nginx/
+
+      - name: Validate and restart nginx
+        run: |
+          ssh -i ~/.ssh/id_rsa $EC2_USER@$EC2_HOST << 'EOF'
+            cd ${{ env.DEPLOY_PATH }}
+
+            # Test nginx configuration
+            docker compose exec -T nginx nginx -t || {
+              echo "Nginx configuration test failed!"
+              exit 1
+            }
+
+            # Restart nginx to apply changes
+            docker compose restart nginx
+
+            # Wait for nginx to be healthy
+            sleep 10
+
+            # Check nginx status
+            docker compose ps nginx
+
+            # Test endpoints
+            echo "Testing V1 health endpoint..."
+            curl -f http://localhost/api/v1/health || echo "V1 health check failed"
+
+            echo "Nginx deployment completed successfully!"
+          EOF
+
+      - name: Deployment Summary
+        run: |
+          echo "✅ Nginx configuration deployed successfully!"
+          echo "📋 Deployment details:"
+          echo "  - Server: $EC2_HOST"
+          echo "  - Path: $DEPLOY_PATH"
+          echo "  - V1 API: https://agape.penwin.cloud/api/v1/*"
+          echo "  - V2 API: https://agape.penwin.cloud/api/v2/*"
